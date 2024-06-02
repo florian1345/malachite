@@ -77,23 +77,15 @@ pub_crate_test! {limbs_sub_mul_limb_same_length_in_place_left(
     z: Limb
 ) -> Limb {
     assert_eq!(xs.len(), ys.len());
-    let mut borrow = 0;
-    let z = DoubleLimb::from(z);
+    let mut carry = 0;
+    let dz = DoubleLimb::from(z);
     for (x, &y) in xs.iter_mut().zip(ys.iter()) {
-        let (upper, mut lower) = (DoubleLimb::from(y) * z).split_in_half();
-        lower.wrapping_add_assign(borrow);
-        if lower < borrow {
-            borrow = upper.wrapping_add(1);
-        } else {
-            borrow = upper;
-        }
-        lower = x.wrapping_sub(lower);
-        if lower > *x {
-            borrow.wrapping_add_assign(1);
-        }
-        *x = lower;
+        let to_subtract = DoubleLimb::from(y) * dz + DoubleLimb::from(carry);
+        let result = x.wrapping_sub(to_subtract.lower_half());
+        carry = to_subtract.upper_half() + Limb::from(result > *x);
+        *x = result;
     }
-    borrow
+    carry
 }}
 
 // Given the limbs of two `Natural`s x and y, and a limb z, calculates x - y * z and writes the
